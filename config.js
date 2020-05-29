@@ -1,4 +1,4 @@
-const INGEST_INTERVAL = process.env.INGEST_INTERVAL_MS || 60000;
+const INGEST_INTERVAL = process.env.INGEST_INTERVAL_MS || 300000;
 const MU_APPLICATION_GRAPH = process.env.MU_APPLICATION_GRAPH || 'http://mu.semte.ch/application';
 const SYNC_BASE_URL = process.env.SYNC_BASE_URL || 'https://api.loket.lblod.info';
 const SYNC_FILES_PATH = process.env.SYNC_FILES_PATH || '/sync/mandatarissen/files';
