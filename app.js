@@ -31,13 +31,11 @@ async function ingestFiles() {
   `
 
   const sinceQueryResult = await query(sinceQueryString)
-  console.log(sinceQueryResult)
   let since = undefined
   if(sinceQueryResult.results.bindings[0]) {
     since = sinceQueryResult.results.bindings[0].since.value
   }
   since = new Date(since)
-  console.log(since)
   const files = await getFilesFromEndpoint(since)
   const downloadedFiles = []
   for(let i = 0; i < files.length; i++) {
@@ -47,7 +45,6 @@ async function ingestFiles() {
   for(let j = 0; j<downloadedFiles.length; j++) {
     await processFile(downloadedFiles[j])
   }
-  console.log('Finished processing times')
   await updateSinceTime()
 }
 
@@ -153,10 +150,11 @@ async function addFileToDB(filePath) {
 }
 
 async function processFile(fileName) {
-  console.log('------------')
-  console.log(`Processing file ${fileName}`)
   const fileData = JSON.parse(fs.readFileSync(path.join('/share/', fileName), {encoding: 'utf8'}))
   const inserts = fileData.delta.inserts
+  if(isSessionInfo(inserts)) {
+    await deletePreviousData(inserts)
+  }
   if(inserts.length > 0 && inserts.length < 10) {
     await insertData(inserts)
   } else if(inserts.length > 10) {
@@ -164,6 +162,75 @@ async function processFile(fileName) {
       await insertData(inserts.slice(10*i, 10*(i+1)))
     }
   }
+}
+
+function isSessionInfo(inserts) {
+  for(let i = 0; i<inserts.length; i++) {
+    if(inserts[i].object.value === 'http://data.vlaanderen.be/ns/besluit#Zitting') {
+      return true
+    }
+  }
+  return false
+}
+
+async function deletePreviousData(inserts) {
+  const uri = inserts.find((insert) => insert.object.value === 'http://data.vlaanderen.be/ns/besluit#Zitting').subject.value
+  const queryString = `
+    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>       
+    PREFIX dbpedia: <http://dbpedia.org/ontology/>           
+    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>          
+    PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>       
+    PREFIX dct: <http://purl.org/dc/terms/>                  
+    PREFIX prov: <http://www.w3.org/ns/prov#>    
+    DELETE {
+      ${sparqlEscapeUri(uri)} ext:publishedNieuwsbriefInfo ?newsItem ;           
+          ?sessionP ?sessionO .        
+        ?newsItem a besluitvorming:NieuwsbriefInfo ;         
+            ?p ?o .
+        ?procedurestappen prov:generated ?newsItem.
+        ?procedurestappen besluitvorming:isGeagendeerdVia ?agendapunten.
+        ?agendapunten ?ap ?ao.
+        ?procedurestappen besluitvorming:heeftBevoegde ?mandaat.
+        ?Procedurestap prov:generated ?newsItem.
+        ?Procedurestap besluitvorming:isGeagendeerdVia ?agendapuntenP.
+        ?agendapuntenP ?aPp ?aPo.
+        ?Procedurestap besluitvorming:heeftBevoegde ?mandaatP.
+        ?newsItem ext:documentVersie ?doc .  
+        ?serie <http://data.vlaanderen.be/ns/besluitvorming#heeftVersie> ?doc.
+        ?serie ?serieP ?serieO.
+        ?doc ?docP ?docO.
+    } WHERE {     
+      GRAPH <http://mu.semte.ch/graphs/public> {          
+        ${sparqlEscapeUri(uri)} ext:publishedNieuwsbriefInfo ?newsItem ;           
+          ?sessionP ?sessionO .        
+        ?newsItem a besluitvorming:NieuwsbriefInfo ;         
+            ?p ?o .
+        ?procedurestappen prov:generated ?newsItem.
+        OPTIONAL {
+          ?procedurestappen besluitvorming:isGeagendeerdVia ?agendapunten.
+          ?agendapunten ?ap ?ao.
+        }
+        OPTIONAL {
+          ?procedurestappen besluitvorming:heeftBevoegde ?mandaat.
+        }
+        ?Procedurestap prov:generated ?newsItem.
+        OPTIONAL {
+          ?Procedurestap besluitvorming:isGeagendeerdVia ?agendapuntenP.
+          ?agendapuntenP ?aPp ?aPo.
+        }
+        OPTIONAL {
+          ?Procedurestap besluitvorming:heeftBevoegde ?mandaatP.
+        }
+        OPTIONAL {                  
+          ?newsItem ext:documentVersie ?doc .  
+          ?serie <http://data.vlaanderen.be/ns/besluitvorming#heeftVersie> ?doc.
+          ?serie ?serieP ?serieO.
+          ?doc ?docP ?docO.
+        }
+      }          
+    } 
+  `
+  await update(queryString)
 }
 
 async function insertData(inserts) {
@@ -175,10 +242,6 @@ async function insertData(inserts) {
     }
   `
   await query(queryString)
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function processInsert({subject, predicate, object}) {
@@ -200,17 +263,6 @@ function processTripleElement(element) {
       return sparqlEscapeInt(element.value)
     }
   }
-  console.log('----------------------------------------------------------------------------------------------------')
-  console.log('----------------------------------------------------------------------------------------------------')
-  console.log('----------------------------------------------------------------------------------------------------')
-  console.log('NOT FOUND NOT FOUND')
-  console.log('----------------------------------------------------------------------------------------------------')
-  console.log('----------------------------------------------------------------------------------------------------')
-  console.log('----------------------------------------------------------------------------------------------------')
-  console.log(element)
-  console.log('----------------------------------------------------------------------------------------------------')
-  console.log('----------------------------------------------------------------------------------------------------')
-  console.log('----------------------------------------------------------------------------------------------------')
 }
 
 app.get('/test', async (req, res) => {
