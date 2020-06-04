@@ -113,7 +113,7 @@ async function addFileToDB(filePath) {
     location: location
   };
   const logicalFileUuid = uuid();
-  const logicalFileURI = `http://data.lblod.info/files/${logicalFileUuid}`;
+  const logicalFileURI = `http://kanselarij.vo.data.gift/id/files/${logicalFileUuid}`;
   const physicalFileUuid = uuid();
   const physicalFileURI = `share://${fileInfo.location}`;
   const queryString = `
@@ -264,9 +264,5 @@ function processTripleElement(element) {
     }
   }
 }
-
-app.get('/test', async (req, res) => {
-  res.send('Hello World');
-});
 
 app.use(errorHandler);
