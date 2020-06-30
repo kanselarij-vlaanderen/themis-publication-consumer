@@ -1,13 +1,16 @@
 {
   "name": "valvas-publication-consumer",
   "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
+  "description": "Microservice that ingests delta files for Valvas publications",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kanselarij/valvas-publication-consumer.git"
+  },
+  "author": "redpencil.io",
+  "license": "MIT",
   "dependencies": {
     "@lblod/mu-auth-sudo": "^0.2.0",
     "node-fetch": "^2.6.0"
