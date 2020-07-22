@@ -1,268 +1,63 @@
-import { app, errorHandler, uuid, sparqlEscapeUri, sparqlEscapeDateTime, sparqlEscapeString, sparqlEscapeInt } from 'mu';
-import bodyParser from 'body-parser';
-import {INGEST_INTERVAL, SYNC_FILES_ENDPOINT, DOWNLOAD_FILE_ENDPOINT} from './config'
-import fetch from 'node-fetch'
-import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
-import fs from 'fs'
-import path from 'path'
+import { app, errorHandler } from 'mu';
+import fetch from 'node-fetch';
+import { INGEST_INTERVAL } from './config';
+import { getNextSyncTask, getRunningSyncTask, scheduleSyncTask } from './lib/sync-task';
+import { getUnconsumedFiles } from './lib/delta-file';
 
-const serviceUri = 'http://redpencil.data.gift/services/valvas-publication-consumer';
+/**
+ * Core assumption of the microservice that must be respected at all times:
+ *
+ * 1. At any moment we know that the latest ext:deltaUntil timestamp
+ *    on a task, either in failed/ongoing/success state, reflects
+ *    the timestamp of the latest delta file that has been
+ *    completly and successfully consumed
+ * 2. Maximum 1 sync task is running at any moment in time
+*/
 
-// parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: false }));
+// TODO on startup:
+// - wait unitl DB is up
+// - move any task that is still in the ongoing state to the failed state
 
-// parse application/json
-app.use(bodyParser.json());
+const serviceUri = 'http://kanselarij.data.gift/services/valvas-publication-consumer';
 
 function triggerIngest() {
   console.log(`Executing scheduled function at ${new Date().toISOString()}`);
-  ingestFiles()
+  fetch('http://localhost/ingest/', {
+    method: 'POST'
+  });
   setTimeout( triggerIngest, INGEST_INTERVAL );
 }
 
-triggerIngest()
+triggerIngest();
 
-async function ingestFiles() {
-  const sinceQueryString = `
-    PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-    select ?since where {
-      ${sparqlEscapeUri(serviceUri)} ext:lastIngestion ?since
-    }
-  `
+app.post('/ingest', async function( req, res, next ) {
+  await scheduleSyncTask();
 
-  const sinceQueryResult = await query(sinceQueryString)
-  let since = undefined
-  if(sinceQueryResult.results.bindings[0]) {
-    since = sinceQueryResult.results.bindings[0].since.value
-  }
-  since = new Date(since)
-  const files = await getFilesFromEndpoint(since)
-  const downloadedFiles = []
-  for(let i = 0; i < files.length; i++) {
-    const downloadedFile = await downloadFile(files[i])
-    downloadedFiles.push(downloadedFile)
-  }
-  for(let j = 0; j<downloadedFiles.length; j++) {
-    await processFile(downloadedFiles[j])
-  }
-  await updateSinceTime()
-}
+  const isRunning = await getRunningSyncTask();
 
-async function getFilesFromEndpoint(since) {
-  const syncResponse = await fetch(SYNC_FILES_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      since
-    })
-  })
-  const syncJson = await syncResponse.json()
-  return syncJson
-}
-
-async function updateSinceTime() {
-  const since = new Date()
-  await update(`
-    PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-    DELETE WHERE 
-    {
-      GRAPH <http://mu.semte.ch/application> {
-        ${sparqlEscapeUri(serviceUri)} ext:lastIngestion ?since.
+  if (!isRunning) {
+    const task = await getNextSyncTask();
+    if (task) {
+      console.log(`Start ingesting new delta files since ${task.since.toISOString()}`);
+      try {
+        const files = await getUnconsumedFiles(task.since);
+        task.files = files;
+        task.execute();
+        return res.status(202).end();
+      } catch(e) {
+        console.log(`Something went wrong while ingesting. Closing sync task with failure state.`);
+        console.trace(e);
+        await task.closeWithFailure()();
+        return next(new Error(e));
       }
+    } else {
+      console.log(`No scheduled sync task found. Did the insertion of a new task just fail?`);
+      return res.status(200).end();
     }
-  `);
-  await update(`
-    PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-    INSERT DATA {
-      GRAPH <http://mu.semte.ch/application> {
-        ${sparqlEscapeUri(serviceUri)} ext:lastIngestion ${sparqlEscapeDateTime(since)}.
-      }
-    }
-  `);
-}
-
-async function downloadFile(fileUri) {
-  const fileUuid = fileUri.split('/').pop()
-  const downloadUrl = DOWNLOAD_FILE_ENDPOINT.replace(':id', fileUuid)
-  const response = await fetch(downloadUrl, {
-    method: 'GET'
-  })
-  if(response.status === 500) {
-    const error = await response.text()
-    throw error
+  } else {
+    console.log('A sync task is already running. A new task is scheduled and will start when the previous task finishes');
+    return res.status(409).end();
   }
-  const fileName = response.headers.get('content-disposition').replace('attachment; filename="', '').slice(0, -1)
-  const fileContent = await response.text()
-  fs.writeFileSync(path.join('/share/' , fileName), fileContent)
-  await addFileToDB(path.join('/share/', fileName))
-  return fileName
-}
-
-async function addFileToDB(filePath) {
-  const fileStats = fs.statSync(filePath);
-  const location = filePath.split('/').pop();
-  const [fileName, fileExtension] = location.split('.');
-  const fileInfo = {
-    name: fileName,
-    extension: fileExtension,
-    format: 'application/json',
-    created: new Date(fileStats.birthtime),
-    size: fileStats.size,
-    location: location
-  };
-  const logicalFileUuid = uuid();
-  const logicalFileURI = `http://kanselarij.vo.data.gift/id/files/${logicalFileUuid}`;
-  const physicalFileUuid = uuid();
-  const physicalFileURI = `share://${fileInfo.location}`;
-  const queryString = `
-    PREFIX nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
-    PREFIX dct: <http://purl.org/dc/terms/>
-    PREFIX dbpedia: <http://dbpedia.org/ontology/>
-    PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
-    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-
-    INSERT DATA {
-      GRAPH <http://mu.semte.ch/graphs/public> {
-        ${sparqlEscapeUri(logicalFileURI)} a nfo:FileDataObject;
-          mu:uuid ${sparqlEscapeString(logicalFileUuid)};
-          nfo:fileName ${sparqlEscapeString(fileInfo.name)};
-          dct:format ${sparqlEscapeString(fileInfo.format)};
-          nfo:fileSize ${sparqlEscapeInt(fileInfo.size)};
-          dbpedia:fileExtension ${sparqlEscapeString(fileInfo.extension)};
-          dct:created ${sparqlEscapeDateTime(fileInfo.created)};
-          dct:creator ${sparqlEscapeUri(serviceUri)}.
-        ${sparqlEscapeUri(physicalFileURI)} a nfo:FileDataObject;
-          mu:uuid ${sparqlEscapeString(physicalFileUuid)};
-          nfo:fileName ${sparqlEscapeString(fileInfo.name)};
-          dct:format ${sparqlEscapeString(fileInfo.format)};
-          nfo:fileSize ${sparqlEscapeInt(fileInfo.size)};
-          dbpedia:fileExtension ${sparqlEscapeString(fileInfo.extension)};
-          dct:created ${sparqlEscapeDateTime(fileInfo.created)};
-          nie:dataSource ${sparqlEscapeUri(logicalFileURI)};
-          dct:creator ${sparqlEscapeUri(serviceUri)}.
-      }
-    }
-  `;
-  await query(queryString);
-  return logicalFileURI;
-}
-
-async function processFile(fileName) {
-  const fileData = JSON.parse(fs.readFileSync(path.join('/share/', fileName), {encoding: 'utf8'}))
-  const inserts = fileData.delta.inserts
-  if(isSessionInfo(inserts)) {
-    await deletePreviousData(inserts)
-  }
-  if(inserts.length > 0 && inserts.length < 10) {
-    await insertData(inserts)
-  } else if(inserts.length > 10) {
-    for(let i = 0; i < inserts.length / 10; i++) {
-      await insertData(inserts.slice(10*i, 10*(i+1)))
-    }
-  }
-}
-
-function isSessionInfo(inserts) {
-  for(let i = 0; i<inserts.length; i++) {
-    if(inserts[i].object.value === 'http://data.vlaanderen.be/ns/besluit#Zitting') {
-      return true
-    }
-  }
-  return false
-}
-
-async function deletePreviousData(inserts) {
-  const uri = inserts.find((insert) => insert.object.value === 'http://data.vlaanderen.be/ns/besluit#Zitting').subject.value
-  const queryString = `
-    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>       
-    PREFIX dbpedia: <http://dbpedia.org/ontology/>           
-    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>          
-    PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>       
-    PREFIX dct: <http://purl.org/dc/terms/>                  
-    PREFIX prov: <http://www.w3.org/ns/prov#>    
-    DELETE {
-      ${sparqlEscapeUri(uri)} ext:publishedNieuwsbriefInfo ?newsItem ;           
-          ?sessionP ?sessionO .        
-        ?newsItem a besluitvorming:NieuwsbriefInfo ;         
-            ?p ?o .
-        ?procedurestappen prov:generated ?newsItem.
-        ?procedurestappen besluitvorming:isGeagendeerdVia ?agendapunten.
-        ?agendapunten ?ap ?ao.
-        ?procedurestappen besluitvorming:heeftBevoegde ?mandaat.
-        ?Procedurestap prov:generated ?newsItem.
-        ?Procedurestap besluitvorming:isGeagendeerdVia ?agendapuntenP.
-        ?agendapuntenP ?aPp ?aPo.
-        ?Procedurestap besluitvorming:heeftBevoegde ?mandaatP.
-        ?newsItem ext:documentVersie ?doc .  
-        ?serie <http://data.vlaanderen.be/ns/besluitvorming#heeftVersie> ?doc.
-        ?serie ?serieP ?serieO.
-        ?doc ?docP ?docO.
-    } WHERE {     
-      GRAPH <http://mu.semte.ch/graphs/public> {          
-        ${sparqlEscapeUri(uri)} ext:publishedNieuwsbriefInfo ?newsItem ;           
-          ?sessionP ?sessionO .        
-        ?newsItem a besluitvorming:NieuwsbriefInfo ;         
-            ?p ?o .
-        ?procedurestappen prov:generated ?newsItem.
-        OPTIONAL {
-          ?procedurestappen besluitvorming:isGeagendeerdVia ?agendapunten.
-          ?agendapunten ?ap ?ao.
-        }
-        OPTIONAL {
-          ?procedurestappen besluitvorming:heeftBevoegde ?mandaat.
-        }
-        ?Procedurestap prov:generated ?newsItem.
-        OPTIONAL {
-          ?Procedurestap besluitvorming:isGeagendeerdVia ?agendapuntenP.
-          ?agendapuntenP ?aPp ?aPo.
-        }
-        OPTIONAL {
-          ?Procedurestap besluitvorming:heeftBevoegde ?mandaatP.
-        }
-        OPTIONAL {                  
-          ?newsItem ext:documentVersie ?doc .  
-          ?serie <http://data.vlaanderen.be/ns/besluitvorming#heeftVersie> ?doc.
-          ?serie ?serieP ?serieO.
-          ?doc ?docP ?docO.
-        }
-      }          
-    } 
-  `
-  await update(queryString)
-}
-
-async function insertData(inserts) {
-  const queryString = `
-    INSERT DATA {
-      GRAPH <http://mu.semte.ch/graphs/public> {
-        ${inserts.map(processInsert).join('\n')}
-      }
-    }
-  `
-  await query(queryString)
-}
-
-function processInsert({subject, predicate, object}) {
-  return `${processTripleElement(subject)} ${processTripleElement(predicate)} ${processTripleElement(object)}.`
-}
-
-function processTripleElement(element) {
-  if(element.type === 'uri') {
-    return sparqlEscapeUri(element.value)
-  }
-  if(element.type === 'literal') {
-    if(element.datatype === 'http://www.w3.org/2001/XMLSchema#string') {
-      return sparqlEscapeString(element.value.replace('\t', ''))
-    }
-    if(element.datatype === 'http://www.w3.org/2001/XMLSchema#dateTime') {
-      return sparqlEscapeDateTime(element.value)
-    }
-    if(element.datatype === 'http://www.w3.org/2001/XMLSchema#integer') {
-      return sparqlEscapeInt(element.value)
-    }
-  }
-}
+});
 
 app.use(errorHandler);
