@@ -21,11 +21,13 @@ import { getUnconsumedFiles } from './lib/delta-file';
 const serviceUri = 'http://kanselarij.data.gift/services/valvas-publication-consumer';
 
 function triggerIngest() {
-  console.log(`Executing scheduled function at ${new Date().toISOString()}`);
-  fetch('http://localhost/ingest/', {
-    method: 'POST'
-  });
-  setTimeout( triggerIngest, INGEST_INTERVAL );
+  if (INGEST_INTERVAL > 0) {
+    console.log(`Executing scheduled function at ${new Date().toISOString()}`);
+    fetch('http://localhost/ingest/', {
+      method: 'POST'
+    });
+    setTimeout( triggerIngest, INGEST_INTERVAL );
+  }
 }
 
 triggerIngest();

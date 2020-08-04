@@ -1,4 +1,4 @@
-const INGEST_INTERVAL = process.env.INGEST_INTERVAL || 300000; // 5 minutes TODO fix env var name
+const INGEST_INTERVAL = process.env.INGEST_INTERVAL || -1;
 const SYNC_BASE_URL = process.env.SYNC_BASE_URL || 'https://valvas-publications.vlaanderen.be';
 const SYNC_FILES_PATH = process.env.SYNC_FILES_PATH || '/publications';
 const SYNC_FILES_ENDPOINT = `${SYNC_BASE_URL}${SYNC_FILES_PATH}`;
