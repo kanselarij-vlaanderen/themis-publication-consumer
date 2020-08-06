@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import { INGEST_INTERVAL } from './config';
 import { getNextSyncTask, getRunningSyncTask, scheduleSyncTask } from './lib/sync-task';
 import { getUnconsumedFiles } from './lib/delta-file';
+import { waitForDatabase } from './lib/database-utils';
 
 /**
  * Core assumption of the microservice that must be respected at all times:
@@ -15,7 +16,6 @@ import { getUnconsumedFiles } from './lib/delta-file';
 */
 
 // TODO on startup:
-// - wait unitl DB is up
 // - move any task that is still in the ongoing state to the failed state
 
 const serviceUri = 'http://kanselarij.data.gift/services/valvas-publication-consumer';
@@ -30,7 +30,7 @@ function triggerIngest() {
   }
 }
 
-triggerIngest();
+waitForDatabase(triggerIngest);
 
 app.post('/ingest', async function( req, res, next ) {
   await scheduleSyncTask();
