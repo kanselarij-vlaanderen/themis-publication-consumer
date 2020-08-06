@@ -1,7 +1,7 @@
 import { app, errorHandler } from 'mu';
 import fetch from 'node-fetch';
 import { INGEST_INTERVAL } from './config';
-import { getNextSyncTask, getRunningSyncTask, scheduleSyncTask, setRunningSyncTaskToFailed } from './lib/sync-task';
+import { getNextSyncTask, getRunningSyncTask, scheduleSyncTask, setTaskFailedStatus } from './lib/sync-task';
 import { getUnconsumedFiles } from './lib/delta-file';
 import { waitForDatabase } from './lib/database-utils';
 
@@ -20,11 +20,6 @@ const serviceUri = 'http://kanselarij.data.gift/services/valvas-publication-cons
 async function triggerIngest() {
   if (INGEST_INTERVAL > 0) {
     console.log(`Executing scheduled function at ${new Date().toISOString()}`);
-    const runningTask = await getRunningSyncTask();
-    if (runningTask) {
-      console.log(`Task ${runningTask.uri.value} is still ongoing at startup, updating its status to failed.`)
-      await setRunningSyncTaskToFailed(runningTask.uri.value);
-    }
     fetch('http://localhost/ingest/', {
       method: 'POST'
     });
@@ -32,7 +27,14 @@ async function triggerIngest() {
   }
 }
 
-waitForDatabase(triggerIngest);
+waitForDatabase(async () => {
+  const runningTask = await getRunningSyncTask();
+  if (runningTask) {
+    console.log(`Task <${runningTask.uri.value}> is still ongoing at startup. Updating its status to failed.`);
+    await setTaskFailedStatus(runningTask.uri.value);
+  }
+  triggerIngest();
+});
 
 app.post('/ingest', async function( req, res, next ) {
   await scheduleSyncTask();
