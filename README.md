@@ -27,6 +27,8 @@ The following environment variables are optional:
 * `MU_APPLICATION_GRAPH (default: http://mu.semte.ch/graphs/public)`: target graph in which all data will be ingested
 * `INGEST_INTERVAL (in ms, default: -1)`: interval at which the consumer needs to sync data automatically. If negative, sync can only be triggered manually via the API endpoint.
 * `START_FROM_DELTA_TIMESTAMP (ISO datetime, default: now)`: timestamp to start sync data from (e.g. "2020-07-05T13:57:36.344Z")
+* `BATCH_SIZE (default: 100)`: amount of triples to insert/delete in one SPARQL query
+* `PING_DB_INTERVAL (in seconds, default: 2)`: interval to check whether the database is up on startup
 
 ### Model
 #### Used prefixes
