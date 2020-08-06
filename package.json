@@ -1,6 +1,6 @@
 {
   "name": "valvas-publication-consumer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Microservice that ingests delta files for Valvas publications",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
