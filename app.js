@@ -1,7 +1,7 @@
 import { app, errorHandler } from 'mu';
 import fetch from 'node-fetch';
 import { INGEST_INTERVAL } from './config';
-import { getNextSyncTask, getRunningSyncTask, scheduleSyncTask } from './lib/sync-task';
+import { getNextSyncTask, getRunningSyncTask, scheduleSyncTask, setRunningSyncTaskToFailed } from './lib/sync-task';
 import { getUnconsumedFiles } from './lib/delta-file';
 import { waitForDatabase } from './lib/database-utils';
 
@@ -15,14 +15,16 @@ import { waitForDatabase } from './lib/database-utils';
  * 2. Maximum 1 sync task is running at any moment in time
 */
 
-// TODO on startup:
-// - move any task that is still in the ongoing state to the failed state
-
 const serviceUri = 'http://kanselarij.data.gift/services/valvas-publication-consumer';
 
-function triggerIngest() {
+async function triggerIngest() {
   if (INGEST_INTERVAL > 0) {
     console.log(`Executing scheduled function at ${new Date().toISOString()}`);
+    const runningTask = await getRunningSyncTask();
+    if (runningTask) {
+      console.log(`Task ${runningTask.uri.value} is still ongoing at startup, updating its status to failed.`)
+      await setRunningSyncTaskToFailed(runningTask.uri.value);
+    }
     fetch('http://localhost/ingest/', {
       method: 'POST'
     });
