@@ -15,7 +15,7 @@ import { waitForDatabase } from './lib/database-utils';
  * 2. Maximum 1 sync task is running at any moment in time
 */
 
-const serviceUri = 'http://kanselarij.data.gift/services/valvas-publication-consumer';
+const serviceUri = 'http://kanselarij.vo.data.gift/services/valvas-publication-consumer';
 
 async function triggerIngest() {
   if (INGEST_INTERVAL > 0) {

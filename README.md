@@ -44,16 +44,16 @@ The following environment variables are optional:
 ##### Properties
 | Name       | Predicate        | Range           | Definition                                                                                                                                    |
 |------------|------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| status     | `ext:taskStatus` | `rdfs:Resource` | Status of the sync task, initially set to `<http://kanselarij.data.gift/services/valvas-publication-consumer/sync-task-statuses/not-started>` |
+| status     | `adms:status` | `rdfs:Resource` | Status of the sync task, initially set to `<http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/not-started>` |
 | created    | `dct:created`    | `xsd:dateTime`  | Datetime of creation of the task                                                                                                              |
 | deltaUntil | `ext:deltaUntil` | `xsd:dateTime`  | Datetime of the latest successfully ingested sync file as part of the task execution                                                          |
 
 #### Sync task statuses
 The status of the sync task will be updated to reflect the progress of the task. The following statuses are known:
-* http://kanselarij.data.gift/services/valvas-publication-consumer/sync-task-statuses/not-started
-* http://kanselarij.data.gift/services/valvas-publication-consumer/sync-task-statuses/ongoing
-* http://kanselarij.data.gift/services/valvas-publication-consumer/sync-task-statuses/success
-* http://kanselarij.data.gift/services/valvas-publication-consumer/sync-task-statuses/failed
+* http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/not-started
+* http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/ongoing
+* http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/success
+* http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/failed
 
 ### Data flow
 At regular intervals, the service will schedule a sync task. Execution of a task consists of the following steps:
