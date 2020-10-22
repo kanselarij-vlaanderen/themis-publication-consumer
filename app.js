@@ -15,15 +15,13 @@ import { waitForDatabase } from './lib/database-utils';
  * 2. Maximum 1 sync task is running at any moment in time
 */
 
-const serviceUri = 'http://kanselarij.vo.data.gift/services/valvas-publication-consumer';
-
 async function triggerIngest() {
   if (INGEST_INTERVAL > 0) {
     console.log(`Executing scheduled function at ${new Date().toISOString()}`);
     fetch('http://localhost/ingest/', {
       method: 'POST'
     });
-    setTimeout( triggerIngest, INGEST_INTERVAL );
+    setTimeout(triggerIngest, INGEST_INTERVAL);
   }
 }
 
@@ -36,7 +34,7 @@ waitForDatabase(async () => {
   triggerIngest();
 });
 
-app.post('/ingest', async function( req, res, next ) {
+app.post('/ingest', async function (req, res, next) {
   await scheduleSyncTask();
 
   const isRunning = await getRunningSyncTask();
@@ -50,7 +48,7 @@ app.post('/ingest', async function( req, res, next ) {
         task.files = files;
         task.execute();
         return res.status(202).end();
-      } catch(e) {
+      } catch (e) {
         console.log(`Something went wrong while ingesting. Closing sync task with failure state.`);
         console.trace(e);
         await task.closeWithFailure()();

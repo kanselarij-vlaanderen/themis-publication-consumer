@@ -1,6 +1,6 @@
-# valvas-publication-consumer
+# themis-publication-consumer
 
-Consumer service to sync Valvas publications from external sources based on delta files provided by [valvas-publication-producer](http://github.com/kanselarij-vlaanderen/valvas-publication-producer). At regular intervals the consumer checks for new publication files and ingests the data found in the files. If the publications include documents, the documents are synced as well. All data is ingested in the same graph.
+Consumer service to sync Themis publications from external sources based on delta files provided by [themis-publication-producer](http://github.com/kanselarij-vlaanderen/themis-publication-producer). At regular intervals the consumer checks for new publication files and ingests the data found in the files. If the publications include documents, the documents are synced as well. All data is ingested in the same graph.
 
 ## Tutorials
 ### Add the service to a stack
@@ -8,7 +8,7 @@ Add the service to your `docker-compose.yml`:
 
 ```
   publication-consumer:
-    image: kanselarij/valvas-publication-consumer
+    image: kanselarij/themis-publication-consumer
     environment:
       SYNC_BASE_URL: 'https://publications.kaleidos.vlaanderen.be' # replace with the publications URL
 ```
@@ -44,16 +44,16 @@ The following environment variables are optional:
 ##### Properties
 | Name       | Predicate        | Range           | Definition                                                                                                                                    |
 |------------|------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| status     | `adms:status` | `rdfs:Resource` | Status of the sync task, initially set to `<http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/not-started>` |
+| status     | `adms:status` | `rdfs:Resource` | Status of the sync task, initially set to `<http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/not-started>` |
 | created    | `dct:created`    | `xsd:dateTime`  | Datetime of creation of the task                                                                                                              |
 | deltaUntil | `ext:deltaUntil` | `xsd:dateTime`  | Datetime of the latest successfully ingested sync file as part of the task execution                                                          |
 
 #### Sync task statuses
 The status of the sync task will be updated to reflect the progress of the task. The following statuses are known:
-* http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/not-started
-* http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/ongoing
-* http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/success
-* http://kanselarij.vo.data.gift/services/valvas-publication-consumer/sync-task-statuses/failed
+* http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/not-started
+* http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/ongoing
+* http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/success
+* http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/failed
 
 ### Data flow
 At regular intervals, the service will schedule a sync task. Execution of a task consists of the following steps:
@@ -81,4 +81,3 @@ POST /ingest
 Schedule and execute a sync task.
 
 The endpoint is triggered internally at frequent intervals and should normally not be triggered by an external party.
-
