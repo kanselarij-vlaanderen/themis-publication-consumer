@@ -1,5 +1,5 @@
 const INGEST_INTERVAL = process.env.INGEST_INTERVAL || -1;
-const SYNC_BASE_URL = process.env.SYNC_BASE_URL || 'https://data.themis.vlaanderen.be';
+const SYNC_BASE_URL = process.env.SYNC_BASE_URL || 'https://valvas-publications.vlaanderen.be';
 const SYNC_FILES_PATH = process.env.SYNC_FILES_PATH || '/publications';
 const SYNC_FILES_ENDPOINT = `${SYNC_BASE_URL}${SYNC_FILES_PATH}`;
 const DOWNLOAD_FILE_PATH = process.env.DOWNLOAD_FILE_PATH || '/files/:id/download';
