@@ -1,13 +1,13 @@
 {
-  "name": "valvas-publication-consumer",
-  "version": "1.0.3",
-  "description": "Microservice that ingests delta files for Valvas publications",
+  "name": "themis-publication-consumer",
+  "version": "2.0.0",
+  "description": "Microservice that ingests delta files for Themis publications",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kanselarij/valvas-publication-consumer.git"
+    "url": "git+https://github.com/kanselarij/themis-publication-consumer.git"
   },
   "author": "redpencil.io",
   "license": "MIT",
