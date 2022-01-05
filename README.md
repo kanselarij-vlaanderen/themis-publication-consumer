@@ -31,7 +31,7 @@ The following environment variables are optional:
 * `DOWNLOAD_FILES_PATH (default: /files/:id/download)`: relative path to the endpoint to download publication files from. `:id` will be replaced with the uuid of the file.
 * `DOWNLOAD_DOCUMENT_PATH (default: /kaleidos-files/:id/download)`: relative path to the endpoint to download public Kaleidos documents from. `:id` will be replaced with the uuid of the file.
 * `MU_APPLICATION_GRAPH (default: http://mu.semte.ch/graphs/publication-tasks)`: target graph in which all data regarding tasks is stored
-* `MU_TMP_BASE_GRAPH_URI (default: http://mu.semet.ch/graphs/import/)`: base URI for the temporary graph in which data will be ingested. The base URI is appended with a timestamp.
+* `MU_TMP_BASE_GRAPH_URI (default: http://mu.semte.ch/graphs/import/)`: base URI for the temporary graph in which data will be ingested. The base URI is appended with a timestamp.
 * `INGEST_INTERVAL (in ms, default: -1)`: interval at which the consumer needs to sync data automatically. If negative, sync can only be triggered manually via the API endpoint.
 * `START_FROM_DELTA_TIMESTAMP (ISO datetime, default: now)`: timestamp to start sync data from (e.g. "2020-07-05T13:57:36.344Z")
 * `BATCH_SIZE (default: 100)`: amount of triples to insert/delete in one SPARQL query
