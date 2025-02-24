@@ -16,7 +16,7 @@ const MU_TMP_BASE_GRAPH_URI = 'http://mu.semte.ch/graphs/import/';
 const RELEASE_TASK_NOT_STARTED_STATUS = 'http://kanselarij.vo.data.gift/release-task-statuses/not-started';
 const RESOURCE_BASE_URI  = 'http://themis.vlaanderen.be';
 const EMAIL_GRAPH_URI = "http://mu.semte.ch/graphs/system/email";
-const EMAIL_OUTBOX_URI = "http://themis.vlaanderen.be/id/mail-folders/d9a415a4-b5e5-41d0-80ee-3f85d69e318c"
+const EMAIL_OUTBOX_URI = "http://themis.vlaanderen.be/id/mail-folders/d9a415a4-b5e5-41d0-80ee-3f85d69e318c";
 
 export {
   INGEST_INTERVAL,
