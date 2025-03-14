@@ -36,6 +36,8 @@ The following environment variables are optional:
 * `START_FROM_DELTA_TIMESTAMP (ISO datetime, default: now)`: timestamp to start sync data from (e.g. "2020-07-05T13:57:36.344Z")
 * `BATCH_SIZE (default: 100)`: amount of triples to insert/delete in one SPARQL query
 * `PING_DB_INTERVAL (in seconds, default: 2)`: interval to check whether the database is up on startup
+* `EMAIL_FROM_ADDRESS (default: noreply@kaleidos.vlaanderen.be)`: email address to send from (in case of failure)
+* `EMAIL_TO_ADDRESS_ON_FAILURE (comma separated list, default: empty)`: email address to send to (in case of failure)
 
 ### Model
 #### Used prefixes
@@ -90,6 +92,8 @@ If a publication file contains a triple like `?doc a <http://www.semanticdesktop
 The service makes 2 core assumptions that must be respected at all times:
 1. At any moment we know that the latest `ext:deltaUntil` timestamp on a task, either in failed/ongoing/success state, reflects the timestamp of the latest delta file that has been completly and successfully consumed
 2. Maximum 1 sync task is running at any moment in time
+
+In case of full or partial failure an email will be sent if there are recipients available from `EMAIL_TO_ADDRESS_ON_FAILURE`
 
 ### API
 ```
