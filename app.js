@@ -48,16 +48,9 @@ app.post('/ingest', async function (req, res, next) {
         const files = await getUnconsumedFiles(task.since);
         task.files = files;
         task.execute();
-        // task may have failed but not thrown any errors (we catch errors and set progressStatus to failed)
-        // task may have been successful but not all documents could be downloaded
-        if (task.progressStatus == 'failed' || task.downloadFailedCount) {
-          await createEmailOnFailure(
-            "A sync task has partially failed in themis-publication-consumer",
-            `environment: ${SYNC_BASE_URL}\t\Detail of error: ${task.errorMessage}}`
-          );
-        }
         return res.status(202).end();
       } catch (e) {
+        // we only get here when file consuming failed, task.execute handles any other errors
         console.log(`Something went wrong while ingesting. Closing sync task with failure state.`);
         console.trace(e);
         await task.closeWithFailure();
