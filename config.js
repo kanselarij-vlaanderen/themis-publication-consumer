@@ -6,9 +6,35 @@ const DOWNLOAD_FILE_PATH = process.env.DOWNLOAD_FILE_PATH || '/files/:id/downloa
 const DOWNLOAD_FILE_ENDPOINT = `${SYNC_BASE_URL}${DOWNLOAD_FILE_PATH}`;
 const DOWNLOAD_DOCUMENT_PATH = process.env.DOWNLOAD_DOCUMENT_PATH || '/kaleidos-files/:id/download';
 const DOWNLOAD_DOCUMENT_ENDPOINT = `${SYNC_BASE_URL}${DOWNLOAD_DOCUMENT_PATH}`;
+const BATCH_SIZE = parseInt(process.env.BATCH_SIZE) || 100;
+const EMAIL_FROM_ADDRESS = process.env.EMAIL_FROM_ADDRESS ?? 'noreply@kaleidos.vlaanderen.be';
+const EMAIL_TO_ADDRESS_ON_FAILURE = process.env.EMAIL_TO_ADDRESS_ON_FAILURE ?? '';
+const PING_DB_INTERVAL = process.env.PING_DB_INTERVAL || 2;
+const START_FROM_DELTA_TIMESTAMP =  process.env.START_FROM_DELTA_TIMESTAMP ;;
+
+// constants
+const RELEASE_TASK_STATUSES = {
+  NOT_STARTED: 'http://kanselarij.vo.data.gift/release-task-statuses/not-started'
+  // all other statuses, unused in this service
+  // PREPARING_RELEASE: 'http://kanselarij.vo.data.gift/release-task-statuses/preparing-release',
+  // READY_FOR_RELEASE: 'http://kanselarij.vo.data.gift/release-task-statuses/ready-for-release',
+  // RELEASING: 'http://kanselarij.vo.data.gift/release-task-statuses/releasing',
+  // SUCCESS: 'http://kanselarij.vo.data.gift/release-task-statuses/success',
+  // FAILED: 'http://kanselarij.vo.data.gift/release-task-statuses/failed'
+};
+
+const SYNC_TASK_STATUSES = {
+  NOT_STARTED: 'http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/not-started',
+  ONGOING: 'http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/ongoing',
+  SUCCESS: 'http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/success',
+  FAILED: 'http://kanselarij.vo.data.gift/services/themis-publication-consumer/sync-task-statuses/failed'
+};
+
 const MU_APPLICATION_GRAPH = 'http://mu.semte.ch/graphs/publication-tasks';
 const MU_TMP_BASE_GRAPH_URI = 'http://mu.semte.ch/graphs/import/';
-const BATCH_SIZE = parseInt(process.env.BATCH_SIZE) || 100;
+const RESOURCE_BASE_URI  = 'http://themis.vlaanderen.be';
+const EMAIL_GRAPH_URI = "http://mu.semte.ch/graphs/system/email";
+const EMAIL_OUTBOX_URI = "http://themis.vlaanderen.be/id/mail-folders/d9a415a4-b5e5-41d0-80ee-3f85d69e318c";
 
 export {
   INGEST_INTERVAL,
@@ -16,7 +42,16 @@ export {
   SYNC_FILES_ENDPOINT,
   DOWNLOAD_FILE_ENDPOINT,
   DOWNLOAD_DOCUMENT_ENDPOINT,
+  BATCH_SIZE,
+  EMAIL_FROM_ADDRESS,
+  EMAIL_TO_ADDRESS_ON_FAILURE,
+  PING_DB_INTERVAL,
+  START_FROM_DELTA_TIMESTAMP,
+  RELEASE_TASK_STATUSES,
+  SYNC_TASK_STATUSES,
   MU_APPLICATION_GRAPH,
   MU_TMP_BASE_GRAPH_URI,
-  BATCH_SIZE
+  RESOURCE_BASE_URI,
+  EMAIL_GRAPH_URI,
+  EMAIL_OUTBOX_URI
 }

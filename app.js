@@ -1,9 +1,10 @@
 import { app, errorHandler } from 'mu';
 import fetch from 'node-fetch';
-import { INGEST_INTERVAL } from './config';
+import { INGEST_INTERVAL, SYNC_BASE_URL } from './config';
 import { getNextSyncTask, getRunningSyncTask, scheduleSyncTask, setTaskFailedStatus } from './lib/sync-task';
 import { getUnconsumedFiles } from './lib/delta-file';
 import { waitForDatabase } from './lib/database-utils';
+import { createEmailOnFailure } from './lib/email';
 
 /**
  * Core assumption of the microservice that must be respected at all times:
@@ -49,9 +50,14 @@ app.post('/ingest', async function (req, res, next) {
         task.execute();
         return res.status(202).end();
       } catch (e) {
+        // we only get here when file consuming failed, task.execute handles any other errors
         console.log(`Something went wrong while ingesting. Closing sync task with failure state.`);
         console.trace(e);
         await task.closeWithFailure();
+        await createEmailOnFailure(
+          "A sync task has fully failed in themis-publication-consumer",
+          `environment: ${SYNC_BASE_URL}\t\nDetail of error: ${e?.message || "no details available"}`
+        );
         return next(new Error(e));
       }
     } else {
